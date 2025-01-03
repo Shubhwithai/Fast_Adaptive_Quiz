@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
-import QuestionGenerator from './components/QuestionGenerator';
+import QuestionGenerator from "./components/QuestionGenerator";
+import FlashcardApp from "./components/FlashcardApp";
 
 export default function Home() {
   return (
@@ -9,7 +10,8 @@ export default function Home() {
         <h1 className="text-3xl font-bold text-center mb-8">
           Question Generator
         </h1>
-        <QuestionGenerator />
+        {/* <QuestionGenerator /> */}
+        <FlashcardApp />
       </div>
     </main>
   );

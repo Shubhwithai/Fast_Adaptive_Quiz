@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState } from "react";
 
 export default function QuestionGenerator() {
-  const [topic, setTopic] = useState('');
+  const [topic, setTopic] = useState("");
   const [numQuestions, setNumQuestions] = useState(5);
   const [questions, setQuestions] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -11,20 +11,20 @@ export default function QuestionGenerator() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
-      const response = await fetch('/api/py/generate-questions', {
-        method: 'POST',
+      const response = await fetch("/api/py/generate-flashcards", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ topic, num_questions: numQuestions }),
       });
-      
+
       const data = await response.json();
       setQuestions(data);
     } catch (error) {
-      console.error('Error:', error);
+      console.error("Error:", error);
     } finally {
       setLoading(false);
     }
@@ -32,7 +32,7 @@ export default function QuestionGenerator() {
 
   return (
     <div className="w-full max-w-md mx-auto p-6">
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4 text-black">
         <div>
           <label htmlFor="topic" className="block text-sm font-medium">
             Topic
@@ -46,7 +46,7 @@ export default function QuestionGenerator() {
             required
           />
         </div>
-        
+
         <div>
           <label htmlFor="numQuestions" className="block text-sm font-medium">
             Number of Questions
@@ -67,18 +67,18 @@ export default function QuestionGenerator() {
           disabled={loading}
           className="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 disabled:opacity-50"
         >
-          {loading ? 'Generating...' : 'Generate Questions'}
+          {loading ? "Generating..." : "Generate Questions"}
         </button>
       </form>
 
       {questions && (
         <div className="mt-6">
           <h3 className="text-lg font-medium mb-4">Generated Questions:</h3>
-          <pre className="bg-gray-100 p-4 rounded-md overflow-auto">
+          <pre className="whitespace-pre-wrap break-words p-4 rounded-md overflow-auto">
             {JSON.stringify(questions, null, 2)}
           </pre>
         </div>
       )}
     </div>
   );
-} 
+}
