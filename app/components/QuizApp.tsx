@@ -14,10 +14,13 @@ export default function QuizApp() {
   const [showExplanation, setShowExplanation] = useState(false);
   const [score, setScore] = useState(0);
   const [questionsAnswered, setQuestionsAnswered] = useState(0);
+  const [quizSummary, setQuizSummary] = useState<any>(null);
+  const [currentQuestionNumber, setCurrentQuestionNumber] = useState(1);
 
   const startQuiz = async () => {
     try {
       setIsLoading(true);
+      setCurrentQuestionNumber(1);
       const response = await fetch("/api/py/generate-initial-question", {
         method: "POST",
         headers: {
@@ -42,6 +45,7 @@ export default function QuizApp() {
       setShowExplanation(false);
       setScore(0);
       setQuestionsAnswered(0);
+      setQuizSummary(null);
     } catch (error) {
       console.error("Error starting quiz:", error);
     } finally {
@@ -62,11 +66,38 @@ export default function QuizApp() {
     setQuestionsAnswered(questionsAnswered + 1);
   };
 
+  const submitQuiz = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch("/api/py/submit-quiz", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      setQuizSummary(result);
+      setCurrentQuestion(null);
+      setSelectedAnswer(null);
+      setShowExplanation(false);
+    } catch (error) {
+      console.error("Error submitting quiz:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const getNextQuestion = async () => {
     if (!currentQuestion || !selectedAnswer) return;
 
     try {
       setIsLoading(true);
+      setCurrentQuestionNumber(prev => prev + 1);
       const userResponse: UserResponse = {
         user_answer: selectedAnswer,
         previous_question: currentQuestion.question,
@@ -80,9 +111,14 @@ export default function QuizApp() {
         body: JSON.stringify(userResponse),
       });
 
-      const question: Question = await response.json();
+      if (response.status === 400) {
+        // Quiz is completed, submit for results
+        await submitQuiz();
+        return;
+      }
 
-      setCurrentQuestion(question);
+      const result = await response.json();
+      setCurrentQuestion(result);
       setSelectedAnswer(null);
       setShowExplanation(false);
     } catch (error) {
@@ -92,11 +128,22 @@ export default function QuizApp() {
     }
   };
 
+  const getAnswerText = (letter: string, options?: string[]) =>{
+    if (!options) return "";
+    const option = options.find(opt => opt.startsWith(letter));
+    return option ? option.substring(3) : ""; // Remove "A. ", "B. ", etc.
+  };
+
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
-        <CardTitle>Adaptive Quiz</CardTitle>
-        <div className="flex gap-2">
+        <CardTitle className="text-center text-2xl font-bold">
+          Welcome to the Fast Adaptive Quiz!
+        </CardTitle>
+        <p className="text-center text-muted-foreground mt-2">
+          This quiz app uses AI to generate personalized questions based on your chosen topic and adapts to your performance.
+        </p>
+        <div className="flex gap-2 mt-6">
           <Input
             type="text"
             placeholder="Enter a topic to learn"
@@ -120,8 +167,13 @@ export default function QuizApp() {
       <CardContent className="space-y-6">
         {currentQuestion && (
           <div className="space-y-6">
-            <div className="text-lg font-medium">
-              {currentQuestion.question}
+            <div className="flex items-center justify-between">
+              <div className="text-lg font-medium">
+                <span className="text-muted-foreground mr-2">
+                  Question {currentQuestionNumber}/5:
+                </span>
+                {currentQuestion.question}
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -163,6 +215,57 @@ export default function QuizApp() {
                 </Button>
               </div>
             )}
+          </div>
+        )}
+        {quizSummary && (
+          <div className="space-y-4">
+            <h2 className="text-lg font-bold">Quiz Summary</h2>
+            <div className="p-4 bg-muted rounded-lg">
+              <p className="font-medium">Final Score: {quizSummary.score}</p>
+              <p>Total Questions: {quizSummary.total_questions}</p>
+              <p>Correct Answers: {quizSummary.correct_answers}</p>
+              <p>Time Taken: {Math.round(quizSummary.elapsed_time)} seconds</p>
+            </div>
+            <div className="space-y-4">
+              {quizSummary.details.map((detail: any, index: number) => (
+                <div key={index} className="p-4 border rounded-lg">
+                  <p className="font-medium">
+                    <span className="text-muted-foreground">Question {index + 1}:</span>{" "}
+                    {detail.question}
+                  </p>
+                  <p className="mt-2">
+                    <span className="font-medium">Your Answer: </span>
+                    <span 
+                      className={
+                        detail.correct_answer === detail.user_answer 
+                          ? "text-green-600 font-medium" 
+                          : "text-red-600"
+                      }
+                    >
+                      {detail.user_answer.includes(". ") 
+                        ? detail.user_answer 
+                        : `${detail.user_answer}. ${getAnswerText(detail.user_answer, currentQuestion?.options)}`}
+                    </span>
+                  </p>
+                  {detail.correct_answer !== detail.user_answer && (
+                    <p className="mt-1">
+                      <span className="font-medium">Correct Answer: </span>
+                      <span className="text-green-600 font-medium">
+                        {detail.correct_answer.includes(". ") 
+                          ? detail.correct_answer 
+                          : `${detail.correct_answer}. ${getAnswerText(detail.correct_answer, currentQuestion?.options)}`}
+                      </span>
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+            <Button
+              onClick={startQuiz}
+              className="w-full mt-4"
+            >
+              Try Another Quiz
+            </Button>
           </div>
         )}
       </CardContent>
